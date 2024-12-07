@@ -1,6 +1,10 @@
 import React, { useEffect, useState } from "react";
 import { Block } from "./components/Block";
-import { Block as BlockModel, BlockColor } from "./models/game";
+import {
+  Block as BlockModel,
+  BlockColor,
+  ScoreMultiplier,
+} from "./models/game";
 import { View } from "react-native";
 import tw from "twrnc";
 
@@ -144,8 +148,52 @@ export const TetritoneGame = (): JSX.Element => {
     return () => clearInterval(interval);
   }, [fallingBlocks]);
 
+  useEffect(() => {
+    const fullRows = Array.from({ length: GRID_HEIGHT }, (_, i) => i).filter(
+      (row) =>
+        lockedBlocks.filter((block) => block.posY === row).length === GRID_WIDTH
+    );
+
+    if (fullRows.length > 0) {
+      const colorMatchedRows: number[] = [];
+      // const colorMatchedRows = fullRows.filter((row) =>
+      //   lockedBlocks.filter((b) => b.posY === row)
+      // );
+      const standardMatchedRows = fullRows.filter(
+        (r) => !colorMatchedRows.includes(r)
+      );
+
+      setScore(
+        score +
+          standardMatchedRows.length * ScoreMultiplier.STANDARD +
+          colorMatchedRows.length * ScoreMultiplier.BONUS
+      );
+
+      // remove full rows from lockedBlocks
+      const newLockedBlocks = lockedBlocks.filter(
+        (block) => !fullRows.includes(block.posY)
+      );
+
+      // move down all blocks above removed rows
+      const newLockedBlocksMovedDown = newLockedBlocks.map((block) => {
+        const blocksBelow = newLockedBlocks.filter(
+          (b) => b.posX === block.posX && b.posY > block.posY
+        );
+        const spacesToMove = GRID_HEIGHT - block.posY - blocksBelow.length - 1;
+        return { ...block, posY: block.posY + spacesToMove };
+      });
+
+      setLockedBlocks(newLockedBlocksMovedDown);
+    }
+  }, [lockedBlocks]);
+
   return (
     <>
+      <View style={tw`absolute top-2 right-2`}>
+        <View style={tw`bg-gray-100 p-2 rounded`}>
+          <View style={tw`text-lg font-bold`}>{score}</View>
+        </View>
+      </View>
       {Array.from({ length: GRID_HEIGHT }, (_, i) => (
         <View style={tw`flex-row flex-wrap`}>
           {Array.from({ length: GRID_WIDTH }, (_, j) => {

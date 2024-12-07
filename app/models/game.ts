@@ -12,6 +12,7 @@ export type Block = {
   locked: boolean;
 };
 
-export interface FallingShape {
-  blocks: Block[];
+export enum ScoreMultiplier {
+  STANDARD = 100,
+  BONUS = 200,
 }
