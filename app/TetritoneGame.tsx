@@ -4,6 +4,7 @@ import {
   Block as BlockModel,
   BlockColor,
   ScoreMultiplier,
+  shapes,
 } from "./models/game";
 import { View } from "react-native";
 import tw from "twrnc";
@@ -22,162 +23,13 @@ export const TetritoneGame = (): JSX.Element => {
   const [lockedBlocks, setLockedBlocks] = useState<BlockModel[]>([]);
   const [fallingBlocks, setFallingBlocks] = useState<BlockModel[]>([]);
 
-  const shape1 = [
-    {
-      posX: 6,
-      posY: 0,
-      color: BlockColor.RED,
-    } as BlockModel,
-    {
-      posX: 6,
-      posY: 1,
-      color: BlockColor.GREEN,
-    } as BlockModel,
-    {
-      posX: 6,
-      posY: 2,
-      color: BlockColor.BLUE,
-    } as BlockModel,
-  ];
-
-  const shape2 = [
-    {
-      posX: 5,
-      posY: 0,
-      color: BlockColor.RED,
-    } as BlockModel,
-    {
-      posX: 5,
-      posY: 1,
-      color: BlockColor.GREEN,
-    } as BlockModel,
-    {
-      posX: 5,
-      posY: 2,
-      color: BlockColor.BLUE,
-    } as BlockModel,
-    {
-      posX: 6,
-      posY: 2,
-      color: BlockColor.RED,
-    } as BlockModel,
-  ];
+  const loadRandomShape = () => {
+    const index = Math.floor(Math.random() * shapes.length);
+    setFallingBlocks(shapes[index]);
+  }
 
   useEffect(() => {
-    setFallingBlocks(shape1);
-
-    setLockedBlocks([
-      {
-        posX: 0,
-        posY: 22,
-        color: BlockColor.RED,
-      } as BlockModel,
-      {
-        posX: 1,
-        posY: 22,
-        color: BlockColor.GREEN,
-      } as BlockModel,
-      {
-        posX: 2,
-        posY: 22,
-        color: BlockColor.GREEN,
-      } as BlockModel,
-      {
-        posX: 3,
-        posY: 22,
-        color: BlockColor.GREEN,
-      } as BlockModel,
-      {
-        posX: 4,
-        posY: 22,
-        color: BlockColor.GREEN,
-      } as BlockModel,
-      {
-        posX: 5,
-        posY: 22,
-        color: BlockColor.GREEN,
-      } as BlockModel,
-      {
-        posX: 7,
-        posY: 22,
-        color: BlockColor.GREEN,
-      } as BlockModel,
-      {
-        posX: 8,
-        posY: 22,
-        color: BlockColor.GREEN,
-      } as BlockModel,
-      {
-        posX: 9,
-        posY: 22,
-        color: BlockColor.GREEN,
-      } as BlockModel,
-      {
-        posX: 10,
-        posY: 22,
-        color: BlockColor.GREEN,
-      } as BlockModel,
-      {
-        posX: 11,
-        posY: 22,
-        color: BlockColor.GREEN,
-      } as BlockModel,
-      {
-        posX: 0,
-        posY: 23,
-        color: BlockColor.BLUE,
-      } as BlockModel,
-      {
-        posX: 1,
-        posY: 23,
-        color: BlockColor.BLUE,
-      } as BlockModel,
-      {
-        posX: 2,
-        posY: 23,
-        color: BlockColor.BLUE,
-      } as BlockModel,
-      {
-        posX: 3,
-        posY: 23,
-        color: BlockColor.BLUE,
-      } as BlockModel,
-      {
-        posX: 4,
-        posY: 23,
-        color: BlockColor.BLUE,
-      } as BlockModel,
-      {
-        posX: 5,
-        posY: 23,
-        color: BlockColor.BLUE,
-      } as BlockModel,
-      {
-        posX: 7,
-        posY: 23,
-        color: BlockColor.BLUE,
-      } as BlockModel,
-      {
-        posX: 8,
-        posY: 23,
-        color: BlockColor.BLUE,
-      } as BlockModel,
-      {
-        posX: 9,
-        posY: 23,
-        color: BlockColor.BLUE,
-      } as BlockModel,
-      {
-        posX: 10,
-        posY: 23,
-        color: BlockColor.BLUE,
-      } as BlockModel,
-      {
-        posX: 11,
-        posY: 23,
-        color: BlockColor.BLUE,
-      } as BlockModel,
-    ]);
+    loadRandomShape();
   }, []);
 
   useEffect(() => {
@@ -200,11 +52,11 @@ export const TetritoneGame = (): JSX.Element => {
 
       if (hitLocked || hitBottom) {
         setLockedBlocks([...lockedBlocks, ...newFallingBlocks]);
-        setFallingBlocks(shape2);
+        loadRandomShape();
       } else {
         setFallingBlocks(newFallingBlocks);
       }
-    }, 1000);
+    }, 500);
 
     return () => clearInterval(interval);
   }, [fallingBlocks]);
