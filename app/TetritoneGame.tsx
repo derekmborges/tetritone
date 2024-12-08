@@ -7,6 +7,12 @@ import {
 } from "./models/game";
 import { View } from "react-native";
 import tw from "twrnc";
+import {
+  Directions,
+  Gesture,
+  GestureDetector,
+} from "react-native-gesture-handler";
+import Animated, { useSharedValue } from "react-native-reanimated";
 
 const GRID_WIDTH = 12;
 const GRID_HEIGHT = 24;
@@ -63,13 +69,68 @@ export const TetritoneGame = (): JSX.Element => {
     setLockedBlocks([
       {
         posX: 0,
-        posY: 23,
+        posY: 22,
         color: BlockColor.RED,
       } as BlockModel,
       {
         posX: 1,
+        posY: 22,
+        color: BlockColor.GREEN,
+      } as BlockModel,
+      {
+        posX: 2,
+        posY: 22,
+        color: BlockColor.GREEN,
+      } as BlockModel,
+      {
+        posX: 3,
+        posY: 22,
+        color: BlockColor.GREEN,
+      } as BlockModel,
+      {
+        posX: 4,
+        posY: 22,
+        color: BlockColor.GREEN,
+      } as BlockModel,
+      {
+        posX: 5,
+        posY: 22,
+        color: BlockColor.GREEN,
+      } as BlockModel,
+      {
+        posX: 7,
+        posY: 22,
+        color: BlockColor.GREEN,
+      } as BlockModel,
+      {
+        posX: 8,
+        posY: 22,
+        color: BlockColor.GREEN,
+      } as BlockModel,
+      {
+        posX: 9,
+        posY: 22,
+        color: BlockColor.GREEN,
+      } as BlockModel,
+      {
+        posX: 10,
+        posY: 22,
+        color: BlockColor.GREEN,
+      } as BlockModel,
+      {
+        posX: 11,
+        posY: 22,
+        color: BlockColor.GREEN,
+      } as BlockModel,
+      {
+        posX: 0,
         posY: 23,
-        color: BlockColor.RED,
+        color: BlockColor.BLUE,
+      } as BlockModel,
+      {
+        posX: 1,
+        posY: 23,
+        color: BlockColor.BLUE,
       } as BlockModel,
       {
         posX: 2,
@@ -94,7 +155,7 @@ export const TetritoneGame = (): JSX.Element => {
       {
         posX: 7,
         posY: 23,
-        color: BlockColor.GREEN,
+        color: BlockColor.BLUE,
       } as BlockModel,
       {
         posX: 8,
@@ -114,7 +175,7 @@ export const TetritoneGame = (): JSX.Element => {
       {
         posX: 11,
         posY: 23,
-        color: BlockColor.RED,
+        color: BlockColor.BLUE,
       } as BlockModel,
     ]);
   }, []);
@@ -155,10 +216,20 @@ export const TetritoneGame = (): JSX.Element => {
     );
 
     if (fullRows.length > 0) {
-      const colorMatchedRows: number[] = [];
-      // const colorMatchedRows = fullRows.filter((row) =>
-      //   lockedBlocks.filter((b) => b.posY === row)
-      // );
+      const colorMatchedRows = fullRows.filter((row) => {
+        const rowBlocks = lockedBlocks.filter((b) => b.posY === row);
+        const redBlocks = rowBlocks.filter((b) => b.color === BlockColor.RED);
+        const blueBlocks = rowBlocks.filter((b) => b.color === BlockColor.BLUE);
+        const greenBlocks = rowBlocks.filter(
+          (b) => b.color === BlockColor.GREEN
+        );
+
+        return (
+          redBlocks.length === GRID_WIDTH ||
+          blueBlocks.length === GRID_WIDTH ||
+          greenBlocks.length === GRID_WIDTH
+        );
+      });
       const standardMatchedRows = fullRows.filter(
         (r) => !colorMatchedRows.includes(r)
       );
@@ -187,6 +258,33 @@ export const TetritoneGame = (): JSX.Element => {
     }
   }, [lockedBlocks]);
 
+  const startTranslateX = useSharedValue(0);
+
+  const flingGesture = Gesture.Fling()
+    .direction(Directions.LEFT | Directions.RIGHT)
+    .onBegin((event) => {
+      startTranslateX.value = event.x;
+    })
+    .onStart((event) => {
+      const flingDeltaX = event.x - startTranslateX.value;
+      const xDelta = flingDeltaX > 0 ? 1 : -1;
+
+      if (fallingBlocks.length > 0) {
+        if (
+          (xDelta === 1 &&
+            fallingBlocks.some((b) => b.posX === GRID_WIDTH - 1)) ||
+          (xDelta === -1 && fallingBlocks.some((b) => b.posX === 0))
+        )
+          return;
+
+        const newFallingBlocks = fallingBlocks.map((b) => ({
+          ...b,
+          posX: b.posX + xDelta,
+        }));
+        setFallingBlocks(newFallingBlocks);
+      }
+    });
+
   return (
     <>
       <View style={tw`absolute top-2 right-2`}>
@@ -194,25 +292,29 @@ export const TetritoneGame = (): JSX.Element => {
           <View style={tw`text-lg font-bold`}>{score}</View>
         </View>
       </View>
-      {Array.from({ length: GRID_HEIGHT }, (_, i) => (
-        <View style={tw`flex-row flex-wrap`}>
-          {Array.from({ length: GRID_WIDTH }, (_, j) => {
-            let block = undefined;
+      <GestureDetector gesture={flingGesture}>
+        <Animated.View>
+          {Array.from({ length: GRID_HEIGHT }, (_, i) => (
+            <View style={tw`flex-row flex-wrap`}>
+              {Array.from({ length: GRID_WIDTH }, (_, j) => {
+                let block = undefined;
 
-            block = lockedBlocks.find(
-              (block) => block.posX === j && block.posY === i
-            );
+                block = lockedBlocks.find(
+                  (block) => block.posX === j && block.posY === i
+                );
 
-            if (!block) {
-              block = fallingBlocks.find(
-                (block) => block.posX === j && block.posY === i
-              );
-            }
+                if (!block) {
+                  block = fallingBlocks.find(
+                    (block) => block.posX === j && block.posY === i
+                  );
+                }
 
-            return <Block color={block?.color} />;
-          })}
-        </View>
-      ))}
+                return <Block color={block?.color} />;
+              })}
+            </View>
+          ))}
+        </Animated.View>
+      </GestureDetector>
     </>
   );
 };
