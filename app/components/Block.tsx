@@ -4,6 +4,7 @@ import tw from 'twrnc';
 import { BlockColor } from '../models/game';
 
 type Props = {
+  size: number;
   color?: BlockColor;
 }
 

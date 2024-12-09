@@ -4,9 +4,11 @@ import {
   Block as BlockModel,
   BlockColor,
   ScoreMultiplier,
-  shapes,
+  BlockType,
+  BLOCK_MAP,
+  ShapeDirection,
 } from "./models/game";
-import { View } from "react-native";
+import { View, Text, Dimensions } from "react-native";
 import tw from "twrnc";
 import {
   Directions,
@@ -17,16 +19,44 @@ import Animated, { useSharedValue } from "react-native-reanimated";
 
 const GRID_WIDTH = 12;
 const GRID_HEIGHT = 24;
+const BLOCK_COLORS = [
+  BlockColor.RED,
+  BlockColor.GREEN,
+  BlockColor.BLUE,
+  // BlockColor.PURPLE,
+  // BlockColor.YELLOW,
+  // BlockColor.ORANGE,
+];
+
+const getRandomBlockType = (): BlockType => {
+  const enumValues = Object.keys(BlockType)
+    .map(t => Number.parseInt(t))
+    .filter(n => !Number.isNaN(n)) as unknown as BlockType[];
+
+  const randomIndex = Math.floor(Math.random() * enumValues.length);
+  return enumValues[randomIndex];
+}
 
 export const TetritoneGame = (): JSX.Element => {
   const [score, setScore] = useState<number>(0);
   const [lockedBlocks, setLockedBlocks] = useState<BlockModel[]>([]);
   const [fallingBlocks, setFallingBlocks] = useState<BlockModel[]>([]);
+  const [shapeDirection, setShapeDirection] = useState<ShapeDirection>(ShapeDirection.NORTH);
 
   const loadRandomShape = () => {
-    const index = Math.floor(Math.random() * shapes.length);
-    setFallingBlocks(shapes[index]);
-  }
+    const blockType = getRandomBlockType();
+    const shapeBlocks = BLOCK_MAP.get(blockType);
+
+    if (!shapeBlocks)
+      return;
+
+    const randomColoredShape = shapeBlocks.map((b) => {
+      const i = Math.floor(Math.random() * BLOCK_COLORS.length);
+      return { ...b, color: BLOCK_COLORS[i] };
+    });
+
+    setFallingBlocks(randomColoredShape);
+  };
 
   useEffect(() => {
     loadRandomShape();
@@ -135,19 +165,29 @@ export const TetritoneGame = (): JSX.Element => {
         }));
         setFallingBlocks(newFallingBlocks);
       }
-    });
+    })
+    .runOnJS(true);
+
+  const tapGesture = Gesture.Tap().onEnd(() => {
+    if (fallingBlocks.length > 0) {
+      // TODO: apply rotation
+    }
+  });
+
+  const { width } = Dimensions.get("screen");
+  const blockSize = Math.floor(width / GRID_WIDTH);
 
   return (
     <>
       <View style={tw`absolute top-2 right-2`}>
         <View style={tw`bg-gray-100 p-2 rounded`}>
-          <View style={tw`text-lg font-bold`}>{score}</View>
+          <Text style={tw`text-lg font-bold`}>{score}</Text>
         </View>
       </View>
-      <GestureDetector gesture={flingGesture}>
+      <GestureDetector gesture={Gesture.Race(flingGesture, tapGesture)}>
         <Animated.View>
           {Array.from({ length: GRID_HEIGHT }, (_, i) => (
-            <View style={tw`flex-row flex-wrap`}>
+            <View key={i} style={tw`w-full max-w-lg flex-row`}>
               {Array.from({ length: GRID_WIDTH }, (_, j) => {
                 let block = undefined;
 
@@ -161,7 +201,13 @@ export const TetritoneGame = (): JSX.Element => {
                   );
                 }
 
-                return <Block color={block?.color} />;
+                return (
+                  <Block
+                    key={`${i}-${j}`}
+                    size={blockSize}
+                    color={block?.color}
+                  />
+                );
               })}
             </View>
           ))}
