@@ -44,6 +44,7 @@ const getRandomBlockType = (): BlockType => {
 export const TetritoneGame = (): JSX.Element => {
   const [score, setScore] = useState<number>(0);
   const [lockedBlocks, setLockedBlocks] = useState<BlockModel[]>([]);
+  const [fallingInterval, setFallingInterval] = useState<number>(500);
   const [fallingBlocks, setFallingBlocks] = useState<BlockModel[]>([]);
   const [fallingBlockType, setFallingBlockType] = useState<BlockType | null>(
     null
@@ -51,6 +52,7 @@ export const TetritoneGame = (): JSX.Element => {
   const [shapeDirection, setShapeDirection] = useState<ShapeDirection>(
     ShapeDirection.NORTH
   );
+  const [movementUnlocked, setMovementUnlocked] = useState<boolean>(true);
 
   const loadRandomShape = () => {
     const blockType = getRandomBlockType();
@@ -63,6 +65,8 @@ export const TetritoneGame = (): JSX.Element => {
       return { ...b, color: BLOCK_COLORS[i] };
     });
 
+    setMovementUnlocked(true);
+    setFallingInterval(500);
     setFallingBlocks(randomColoredShape);
     setFallingBlockType(blockType);
     setShapeDirection(ShapeDirection.NORTH);
@@ -96,7 +100,7 @@ export const TetritoneGame = (): JSX.Element => {
       } else {
         setFallingBlocks(newFallingBlocks);
       }
-    }, 500);
+    }, fallingInterval);
 
     return () => clearInterval(interval);
   }, [fallingBlocks]);
@@ -158,6 +162,8 @@ export const TetritoneGame = (): JSX.Element => {
       startTranslateX.value = event.x;
     })
     .onStart((event) => {
+      if (!movementUnlocked) return;
+
       const flingDeltaX = event.x - startTranslateX.value;
       const xDelta = flingDeltaX > 0 ? 1 : -1;
 
@@ -179,6 +185,8 @@ export const TetritoneGame = (): JSX.Element => {
     .runOnJS(true);
 
   const tapGesture = Gesture.Tap().onEnd(() => {
+    if (!movementUnlocked) return;
+
     if (fallingBlocks.length > 0 && fallingBlockType !== null) {
       const nextDirection = NEXT_DIRECTION_MAP.get(shapeDirection);
       if (nextDirection !== undefined) {
@@ -206,7 +214,18 @@ export const TetritoneGame = (): JSX.Element => {
         setShapeDirection(nextDirection);
       }
     }
-  });
+  })
+  .runOnJS(true);
+
+  const flingDownGesture = Gesture.Fling()
+    .direction(Directions.DOWN)
+    .onEnd(() => {
+      if (!movementUnlocked || fallingBlocks.length === 0) return;
+
+      setMovementUnlocked(false);
+      setFallingInterval(50);
+    })
+    .runOnJS(true);
 
   const { width } = Dimensions.get("screen");
   const blockSize = Math.floor(width / GRID_WIDTH);
@@ -218,7 +237,7 @@ export const TetritoneGame = (): JSX.Element => {
           <Text style={tw`text-lg font-bold`}>{score}</Text>
         </View>
       </View>
-      <GestureDetector gesture={Gesture.Race(flingGesture, tapGesture)}>
+      <GestureDetector gesture={Gesture.Race(flingGesture, flingDownGesture, tapGesture)}>
         <Animated.View>
           {Array.from({ length: GRID_HEIGHT }, (_, i) => (
             <View key={i} style={tw`w-full max-w-lg flex-row`}>
