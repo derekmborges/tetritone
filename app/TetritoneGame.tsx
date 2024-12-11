@@ -7,7 +7,7 @@ import {
   BlockType,
   BLOCK_MAP,
 } from "./models/game";
-import { View, Text, Dimensions } from "react-native";
+import { View, Text, Dimensions, Alert, AlertButton } from "react-native";
 import tw from "twrnc";
 import {
   Directions,
@@ -42,8 +42,11 @@ const getRandomBlockType = (): BlockType => {
 };
 
 export const TetritoneGame = (): JSX.Element => {
+  const [inProgress, setInProgress] = useState<boolean>(true);
   const [score, setScore] = useState<number>(0);
   const [lockedBlocks, setLockedBlocks] = useState<BlockModel[]>([]);
+
+  const [spawned, setSpawned] = useState<boolean>(true);
   const [fallingInterval, setFallingInterval] = useState<number>(500);
   const [fallingBlocks, setFallingBlocks] = useState<BlockModel[]>([]);
   const [fallingBlockType, setFallingBlockType] = useState<BlockType | null>(
@@ -54,11 +57,49 @@ export const TetritoneGame = (): JSX.Element => {
   );
   const [movementUnlocked, setMovementUnlocked] = useState<boolean>(true);
 
+  const handleNewGame = () => {
+    setLockedBlocks([]);
+    setScore(0);
+    setInProgress(true);
+    loadRandomShape();
+  };
+
+  const handleGameOver = () => {
+    setFallingBlocks([]);
+    setFallingBlockType(null);
+    Alert.alert("Game Over", `Score: ${score}`, [
+      {
+        text: "Start Over",
+        onPress: () => handleNewGame(),
+      } as AlertButton,
+    ]);
+  };
+
   const loadRandomShape = () => {
     const blockType = getRandomBlockType();
     const shapeBlocks = BLOCK_MAP.get(blockType);
 
     if (!shapeBlocks) return;
+
+    // check if can spawn the shape
+    // and if the shape can move
+    // both result in game over
+    const canSpawnShape =
+      lockedBlocks.length === 0 ||
+      !lockedBlocks.some((lb) =>
+        shapeBlocks.some((b) => b.posX === lb.posX && b.posY === lb.posY)
+      );
+    const willHitLocked = shapeBlocks.some((block) =>
+      lockedBlocks.some(
+        (lockedBlock) =>
+          lockedBlock.posX === block.posX && lockedBlock.posY === block.posY + 1
+      )
+    );
+
+    if (!canSpawnShape || willHitLocked) {
+      setInProgress(false);
+      return;
+    }
 
     const randomColoredShape = shapeBlocks.map((b) => {
       const i = Math.floor(Math.random() * BLOCK_COLORS.length);
@@ -70,11 +111,18 @@ export const TetritoneGame = (): JSX.Element => {
     setFallingBlocks(randomColoredShape);
     setFallingBlockType(blockType);
     setShapeDirection(ShapeDirection.NORTH);
+    setSpawned(true);
   };
 
   useEffect(() => {
-    loadRandomShape();
+    handleNewGame();
   }, []);
+
+  useEffect(() => {
+    if (!inProgress) {
+      handleGameOver();
+    }
+  }, [inProgress]);
 
   useEffect(() => {
     const interval = setInterval(() => {
@@ -99,6 +147,7 @@ export const TetritoneGame = (): JSX.Element => {
         loadRandomShape();
       } else {
         setFallingBlocks(newFallingBlocks);
+        if (spawned) setSpawned(false);
       }
     }, fallingInterval);
 
@@ -184,38 +233,39 @@ export const TetritoneGame = (): JSX.Element => {
     })
     .runOnJS(true);
 
-  const tapGesture = Gesture.Tap().onEnd(() => {
-    if (!movementUnlocked) return;
+  const tapGesture = Gesture.Tap()
+    .onEnd(() => {
+      if (!movementUnlocked) return;
 
-    if (fallingBlocks.length > 0 && fallingBlockType !== null) {
-      const nextDirection = NEXT_DIRECTION_MAP.get(shapeDirection);
-      if (nextDirection !== undefined) {
-        const directionTransformMap =
-          SHAPE_DIRECTION_TRANSFORM_MAP.get(fallingBlockType);
-        if (!directionTransformMap) return;
+      if (fallingBlocks.length > 0 && fallingBlockType !== null) {
+        const nextDirection = NEXT_DIRECTION_MAP.get(shapeDirection);
+        if (nextDirection !== undefined) {
+          const directionTransformMap =
+            SHAPE_DIRECTION_TRANSFORM_MAP.get(fallingBlockType);
+          if (!directionTransformMap) return;
 
-        const transforms = directionTransformMap.get(nextDirection);
-        if (!transforms) return;
+          const transforms = directionTransformMap.get(nextDirection);
+          if (!transforms) return;
 
-        const rotatedFallingBlocks = fallingBlocks.map((b, i) => {
-          const transform = transforms[i];
-          return {
-            ...b,
-            posX: b.posX + transform.deltaX,
-            posY: b.posY + transform.deltaY,
-          };
-        });
-        const blockOutOfBounds = rotatedFallingBlocks.some(
-          (b) => b.posX < 0 || b.posX >= GRID_WIDTH
-        );
-        if (blockOutOfBounds) return;
+          const rotatedFallingBlocks = fallingBlocks.map((b, i) => {
+            const transform = transforms[i];
+            return {
+              ...b,
+              posX: b.posX + transform.deltaX,
+              posY: b.posY + transform.deltaY,
+            };
+          });
+          const blockOutOfBounds = rotatedFallingBlocks.some(
+            (b) => b.posX < 0 || b.posX >= GRID_WIDTH
+          );
+          if (blockOutOfBounds) return;
 
-        setFallingBlocks(rotatedFallingBlocks);
-        setShapeDirection(nextDirection);
+          setFallingBlocks(rotatedFallingBlocks);
+          setShapeDirection(nextDirection);
+        }
       }
-    }
-  })
-  .runOnJS(true);
+    })
+    .runOnJS(true);
 
   const flingDownGesture = Gesture.Fling()
     .direction(Directions.DOWN)
@@ -227,20 +277,23 @@ export const TetritoneGame = (): JSX.Element => {
     })
     .runOnJS(true);
 
-  const { width } = Dimensions.get("screen");
+  const { width, height } = Dimensions.get("window");
   const blockSize = Math.floor(width / GRID_WIDTH);
+  const GRID_HEIGHT = Math.floor(height / blockSize);
 
   return (
     <>
-      <View style={tw`absolute top-2 right-2`}>
-        <View style={tw`bg-gray-100 p-2 rounded`}>
-          <Text style={tw`text-lg font-bold`}>{score}</Text>
-        </View>
-      </View>
-      <GestureDetector gesture={Gesture.Race(flingGesture, flingDownGesture, tapGesture)}>
-        <Animated.View>
+      <GestureDetector
+        gesture={Gesture.Race(flingGesture, flingDownGesture, tapGesture)}
+      >
+        <Animated.View style={tw`relative`}>
+          <View style={tw`absolute top-5 right-5 z-10`}>
+            <View style={tw`bg-gray-300 px-3 py-2 rounded shadow-sm`}>
+              <Text style={tw`text-lg font-bold`}>Score: {score}</Text>
+            </View>
+          </View>
           {Array.from({ length: GRID_HEIGHT }, (_, i) => (
-            <View key={i} style={tw`w-full max-w-lg flex-row`}>
+            <View key={i} style={tw`min-w-max max-w-lg flex-row`}>
               {Array.from({ length: GRID_WIDTH }, (_, j) => {
                 let block = undefined;
 
