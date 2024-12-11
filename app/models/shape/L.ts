@@ -1,4 +1,5 @@
-import { Block, BlockPositionDelta } from "../game";
+import { Block } from "../game";
+import { BlockPositionDelta } from "./transform";
 
 
 export const SHAPE_L: Block[] = [

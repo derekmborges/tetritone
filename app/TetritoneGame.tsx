@@ -6,9 +6,6 @@ import {
   ScoreMultiplier,
   BlockType,
   BLOCK_MAP,
-  ShapeDirection,
-  NEXT_DIRECTION_MAP,
-  SHAPE_DIRECTION_TRANSFORM_MAP,
 } from "./models/game";
 import { View, Text, Dimensions } from "react-native";
 import tw from "twrnc";
@@ -18,6 +15,11 @@ import {
   GestureDetector,
 } from "react-native-gesture-handler";
 import Animated, { useSharedValue } from "react-native-reanimated";
+import {
+  NEXT_DIRECTION_MAP,
+  SHAPE_DIRECTION_TRANSFORM_MAP,
+  ShapeDirection,
+} from "./models/shape/transform";
 
 const GRID_WIDTH = 12;
 const GRID_HEIGHT = 24;
@@ -187,7 +189,6 @@ export const TetritoneGame = (): JSX.Element => {
         const transforms = directionTransformMap.get(nextDirection);
         if (!transforms) return;
 
-        console.log('fallingBlocks BEFORE', fallingBlocks);
         const rotatedFallingBlocks = fallingBlocks.map((b, i) => {
           const transform = transforms[i];
           return {
@@ -196,10 +197,10 @@ export const TetritoneGame = (): JSX.Element => {
             posY: b.posY + transform.deltaY,
           };
         });
-        if (rotatedFallingBlocks.some((b) => b.posX < 0 || b.posX >= GRID_WIDTH)) {
-          return;
-        }
-        console.log('fallingBlocks AFTER', rotatedFallingBlocks);
+        const blockOutOfBounds = rotatedFallingBlocks.some(
+          (b) => b.posX < 0 || b.posX >= GRID_WIDTH
+        );
+        if (blockOutOfBounds) return;
 
         setFallingBlocks(rotatedFallingBlocks);
         setShapeDirection(nextDirection);
