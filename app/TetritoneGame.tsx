@@ -7,6 +7,8 @@ import {
   BlockType,
   BLOCK_MAP,
   ShapeDirection,
+  NEXT_DIRECTION_MAP,
+  SHAPE_DIRECTION_TRANSFORM_MAP,
 } from "./models/game";
 import { View, Text, Dimensions } from "react-native";
 import tw from "twrnc";
@@ -30,25 +32,29 @@ const BLOCK_COLORS = [
 
 const getRandomBlockType = (): BlockType => {
   const enumValues = Object.keys(BlockType)
-    .map(t => Number.parseInt(t))
-    .filter(n => !Number.isNaN(n)) as unknown as BlockType[];
+    .map((t) => Number.parseInt(t))
+    .filter((n) => !Number.isNaN(n)) as unknown as BlockType[];
 
   const randomIndex = Math.floor(Math.random() * enumValues.length);
   return enumValues[randomIndex];
-}
+};
 
 export const TetritoneGame = (): JSX.Element => {
   const [score, setScore] = useState<number>(0);
   const [lockedBlocks, setLockedBlocks] = useState<BlockModel[]>([]);
   const [fallingBlocks, setFallingBlocks] = useState<BlockModel[]>([]);
-  const [shapeDirection, setShapeDirection] = useState<ShapeDirection>(ShapeDirection.NORTH);
+  const [fallingBlockType, setFallingBlockType] = useState<BlockType | null>(
+    null
+  );
+  const [shapeDirection, setShapeDirection] = useState<ShapeDirection>(
+    ShapeDirection.NORTH
+  );
 
   const loadRandomShape = () => {
     const blockType = getRandomBlockType();
     const shapeBlocks = BLOCK_MAP.get(blockType);
 
-    if (!shapeBlocks)
-      return;
+    if (!shapeBlocks) return;
 
     const randomColoredShape = shapeBlocks.map((b) => {
       const i = Math.floor(Math.random() * BLOCK_COLORS.length);
@@ -56,6 +62,8 @@ export const TetritoneGame = (): JSX.Element => {
     });
 
     setFallingBlocks(randomColoredShape);
+    setFallingBlockType(blockType);
+    setShapeDirection(ShapeDirection.NORTH);
   };
 
   useEffect(() => {
@@ -169,8 +177,33 @@ export const TetritoneGame = (): JSX.Element => {
     .runOnJS(true);
 
   const tapGesture = Gesture.Tap().onEnd(() => {
-    if (fallingBlocks.length > 0) {
-      // TODO: apply rotation
+    if (fallingBlocks.length > 0 && fallingBlockType !== null) {
+      const nextDirection = NEXT_DIRECTION_MAP.get(shapeDirection);
+      if (nextDirection !== undefined) {
+        const directionTransformMap =
+          SHAPE_DIRECTION_TRANSFORM_MAP.get(fallingBlockType);
+        if (!directionTransformMap) return;
+
+        const transforms = directionTransformMap.get(nextDirection);
+        if (!transforms) return;
+
+        console.log('fallingBlocks BEFORE', fallingBlocks);
+        const rotatedFallingBlocks = fallingBlocks.map((b, i) => {
+          const transform = transforms[i];
+          return {
+            ...b,
+            posX: b.posX + transform.deltaX,
+            posY: b.posY + transform.deltaY,
+          };
+        });
+        if (rotatedFallingBlocks.some((b) => b.posX < 0 || b.posX >= GRID_WIDTH)) {
+          return;
+        }
+        console.log('fallingBlocks AFTER', rotatedFallingBlocks);
+
+        setFallingBlocks(rotatedFallingBlocks);
+        setShapeDirection(nextDirection);
+      }
     }
   });
 
